@@ -1,4 +1,4 @@
-Set the variables the `benchmark_layer.sh`
+Set any variables the `benchmark_layer.sh`
 
 ### Run the Benchmark
 
