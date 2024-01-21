@@ -1,5 +1,3 @@
-### vLLM Marlin Layer Benchmarking
-
 Set the variables the `benchmark_layer.sh`
 
 ### Run the Benchmark
