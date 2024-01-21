@@ -3,17 +3,20 @@ import time
 import argparse
 from vllm import LLM, SamplingParams
 
+GPU_TYPES = ["a100", "a10", "a4000"]
+WEIGHT_TYPES = ["fp16", "gptq", "marlin"]
+
+DECODE_BATCH_SIZES = [1, 4, 8, 16, 32, 48, 64]
+
+PREFILL_BATCH_SIZES = [1]
+PREFILL_WORD_LENS = [8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096]
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--model-id", type=str)
 parser.add_argument("--skip-decode", action="store_true")
 parser.add_argument("--skip-prefill", action="store_true")
 parser.add_argument("--skip-cut-prompt", action="store_true")
-
-GPU_TYPES = ["a100", "a10", "a4000"]
-
-DECODE_BATCH_SIZES = [1, 4, 8, 16, 32, 48, 64]
-PREFILL_BATCH_SIZES = [1]
-PREFILL_WORD_LENS = [8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096]
+parser.add_argument("--gpu-type", type=str, choices=GPU_TYPES)
 
 def get_decode_tput(batch_size=1, num_tokens=256, iterations=10, _verbose=False):
     prompts = ["Hello"] * batch_size
@@ -88,6 +91,8 @@ if __name__ == "__main__":
     model = LLM(model=args.model_id)
     results = []
 
+    print(model.quant_config)
+
     if not args.skip_decode:
         # benchmark decode
         for batch_size in DECODE_BATCH_SIZES:
@@ -105,9 +110,13 @@ if __name__ == "__main__":
                 tput = get_prefill_tput(batch_size, num_words, iterations=10, cut_prompt=(not args.skip_cut_prompt))
                 results.append({
                     "model_id": args.model_id,
-                    "seq_len": 1,
-                    "batch_size": batch,
+                    "seq_len": num_words * 2,
+                    "batch_size": batch_size,
                 })
 
     for key in results:
         print(f"{key}: {results[key]: 0.0f} tok/sec")
+
+    csv_path = f"{args.gpu_type}_results/results.csv"
+    make_header = not os.path.isfile(csv_path)
+    df.to_csv(csv_path, mode="a", index=False, header=make_header)
