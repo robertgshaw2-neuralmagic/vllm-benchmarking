@@ -3,13 +3,15 @@ import time
 import argparse
 from vllm import LLM, SamplingParams
 
-model_id = "meta-llama/Llama-2-7b-chat-hf"
-DO_DECODE = True
-DO_PREFILL = True
+parser = argparse.ArgumentParser()
+parser.add_argument("--model-id", type=str)
+parser.add_argument("--skip-decode", action="store_true")
+parser.add_argument("--skip-prefill", action="store_true")
+parser.add_argument("--skip-cut-prompt", action="store_true")
+
 DECODE_BATCH_SIZES = [1,2,4,8,16,32,64]
 PREFILL_BATCH_SIZES = [1,2,4,8]
-PREFILL_WORD_LENS = [16, 128, 256, 512, 1024]
-CUT_PROMPT = True
+PREFILL_WORD_LENS = [16, 128, 256, 512]
 
 def get_decode_tput(batch_size=1, num_tokens=256):
     prompts = ["Hello"] * batch_size
@@ -25,13 +27,16 @@ def get_decode_tput(batch_size=1, num_tokens=256):
     for output in outputs:
         total_tokens += len(output.outputs[0].token_ids)
 
+    tput = total_tokens / total_time
     print(f"----- Batch Size: {batch_size} -----")
     print(f"Total time: {total_time:0.2f}s")
     print(f"Total tokens: {total_tokens} tokens")
-    print(f"Tput: {total_tokens / total_time:0.2f} tokens/sec")
+    print(f"Tput: {tput:0.2f} tokens/sec\n")
 
-def get_prefill_tput(batch_size=1, num_words=32, iterations=10):
-    if CUT_PROMPT:
+    return tput
+
+def get_prefill_tput(batch_size=1, num_words=32, iterations=10, cut_prompt=True):
+    if cut_prompt:
         prompts = [("Hello_" * num_words)[:-1]]*batch_size
     else:
         prompts = ["Hello_" * num_words]*batch_size
@@ -51,22 +56,33 @@ def get_prefill_tput(batch_size=1, num_words=32, iterations=10):
         prompt_tokens += len(output.prompt_token_ids)
     total_tokens = prompt_tokens * iterations
     
+    tput = total_tokens / total_time
     print(f"\n----- Batch Size: {batch_size} -----")
     print(f"----- Prompt Tokens: {prompt_tokens // batch_size} -----")
     print(f"Total time: {total_time:0.2f}s")
     print(f"Total tokens: {total_tokens} tokens")
-    print(f"Tput: {total_tokens / total_time:0.2f} tokens/sec\n")
+    print(f"Tput: {tput:0.2f} tokens/sec\n")
+
+    return tput
 
 if __name__ == "__main__":
-    model = LLM(model=model_id)
-    
-    if DO_DECODE:
+    args = parser.parse_args()
+
+    model = LLM(model=args.model_id)
+    results = {}
+
+    if not args.skip_decode:
         # benchmark decode
         for batch_size in DECODE_BATCH_SIZES:
-            get_decode_tput(batch_size, num_tokens=256)
-    
-    if DO_PREFILL:
+            tput = get_decode_tput(batch_size, num_tokens=256)
+            results[f"decode_b_{batch_size}"] = tput
+
+    if not args.skip_prefill:
         # benchmark prefill
         for batch_size in PREFILL_BATCH_SIZES:
             for num_words in PREFILL_WORD_LENS:
-                get_prefill_tput(batch_size, num_words, iterations=10)
+                tput = get_prefill_tput(batch_size, num_words, iterations=10, cut_prompt=(not args.skip_cut_prompt))
+                results[f"prefill_b_{batch_size}_seqlen_{num_words*2}"] = tput
+
+    for key in results:
+        print(f"{key}: {results[key]: 0.0f} tok/sec")
