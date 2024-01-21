@@ -3,7 +3,7 @@
 do_10s=false
 gpu_type="a100"
 model_sizes=("7b-mha" "7b-gqa" "13b-mha" "13b-gqa" "33b-gqa" "70b-gqa")
-layer_types=("column_linear")
+layer_types=("qkv_linear")
 
 for model_size in ${model_sizes[@]}; do
     for layer_type in ${layer_types[@]}; do
