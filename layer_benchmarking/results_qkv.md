@@ -1,4 +1,4 @@
-# Marlin Benchmarking
+# Marlin Benchmarking (`QKV_Proj`)
 
 ## A100 Benchmarks
 
@@ -16,3 +16,20 @@
 
 ### 70b Model
 <img src= "./results_a100/70b-gqa_qkv_linear_fp16_marlin.png" width="70%">
+
+## A10 Benchmarks
+
+### 7b Model
+
+<img src= "./results_a10/7b-mha_qkv_linear_fp16_marlin.png" width="70%">
+<img src= "./results_a10/7b-gqa_qkv_linear_fp16_marlin.png" width="70%">
+
+### 13b Model
+<img src= "./results_a10/13b-mha_qkv_linear_fp16_marlin.png" width="70%">
+<img src= "./results_a10/13b-gqa_qkv_linear_fp16_marlin.png" width="70%">
+
+### 33b Model
+<img src= "./results_a10/33b-gqa_qkv_linear_fp16_marlin.png" width="70%">
+
+### 70b Model
+<img src= "./results_a10/70b-gqa_qkv_linear_fp16_marlin.png" width="70%">
