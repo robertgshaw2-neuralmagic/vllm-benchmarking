@@ -31,6 +31,20 @@ from vllm.transformers_utils.tokenizer import get_tokenizer
 REQUEST_LATENCY: List[Tuple[int, int, float]] = []
 
 
+def make_synthetic_requests(
+    num_input_words: int, 
+    num_output_tokens: int,
+    num_requests: int,
+    tokenizer: PreTrainedTokenizerBase,
+) -> List[Tuple[str, int, int]]:
+    prompt = ("Hello_" * num_input_words)[:-1]
+    num_input_tokens = len(tokenizer(prompt).input_ids)
+    
+    print(f"--- Num Input Tokens: {num_input_tokens}")
+    print(f"--- Num Output Tokens: {num_output_tokens}")
+
+    return [(prompt, num_input_tokens, num_output_tokens)] * num_requests
+
 def sample_requests(
     dataset_path: str,
     num_requests: int,
@@ -170,7 +184,6 @@ async def benchmark(
         tasks.append(task)
     await asyncio.gather(*tasks)
 
-
 def main(args: argparse.Namespace):
     print(args)
     random.seed(args.seed)
@@ -178,7 +191,16 @@ def main(args: argparse.Namespace):
 
     api_url = f"http://{args.host}:{args.port}/generate"
     tokenizer = get_tokenizer(args.tokenizer, trust_remote_code=args.trust_remote_code)
-    input_requests = sample_requests(args.dataset, args.num_prompts, tokenizer)
+    
+    if args.dataset == "synthetic":
+        input_requests =  make_synthetic_requests(
+            num_input_words=args.synthetic_input_words,
+            num_output_tokens=args.synthetic_output_tokens,
+            num_requests=args.num_prompts,
+            tokenizer=tokenizer,
+        )
+    else:
+        input_requests = sample_requests(args.dataset, args.num_prompts, tokenizer)
 
     benchmark_start_time = time.perf_counter()
     asyncio.run(benchmark(args.backend, api_url, input_requests, args.best_of,
@@ -212,7 +234,11 @@ if __name__ == "__main__":
     parser.add_argument("--host", type=str, default="localhost")
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--dataset", type=str, required=True,
-                        help="Path to the dataset.")
+                        help="Path to the dataset. Pass `synthetic` for random data")
+    parser.add_argument("--synthetic-input-words", type=int, required=False, default=256,
+                        help="Number of words to pass for `synthetic` data.")
+    parser.add_argument("--synthetic-output-tokens", type=int, required=False, default=256,
+                        help="Number of output tokens to generate for `synthetic` data.")
     parser.add_argument("--tokenizer", type=str, required=True,
                         help="Name or path of the tokenizer.")
     parser.add_argument("--best-of", type=int, default=1,
